@@ -4,9 +4,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dts from 'rollup-plugin-dts';
 import terser from '@rollup/plugin-terser';
-import { readdir, access } from 'node:fs/promises';
+import { readdir, access, writeFile } from 'node:fs/promises';
 import pkg from './package.json' assert { type: 'json' };
-import { statSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync } from 'node:fs';
 
 const externalDeps = Object.keys(pkg.dependencies || {});
 
@@ -22,19 +22,38 @@ const outDir = 'dist';
 const componentDirPath = 'src/components';
 const ioList: { input: string; output: string; outputDts: string }[] = [];
 
-const componentDir = resolve(componentDirPath);
-await access(componentDir);
-const componentDirFs = await readdir(componentDir);
-componentDirFs.forEach((file) => {
-  const fileStat = statSync(resolve(`${componentDir}/${file}`));
-  if (fileStat.isDirectory()) {
-    ioList.push({
-      input: resolve(`${componentDir}/${file}/${input}`),
-      output: resolve(`${outDir}/${file}/${output}`),
-      outputDts: resolve(`${outDir}/${file}/${dtsOutput}`),
-    });
-  }
-});
+const generateIoList = async () => {
+  const componentDir = resolve(componentDirPath);
+  await access(componentDir);
+  const componentDirFs = await readdir(componentDir);
+  componentDirFs.forEach((file) => {
+    const fileStat = statSync(resolve(`${componentDir}/${file}`));
+    if (fileStat.isDirectory()) {
+      ioList.push({
+        input: resolve(`${componentDir}/${file}/${input}`),
+        output: resolve(`${outDir}/${file}/${output}`),
+        outputDts: resolve(`${outDir}/${file}/${dtsOutput}`),
+      });
+    }
+  });
+};
+
+const generatePackage = async () => {
+  !existsSync(resolve(outDir)) && mkdirSync(resolve(outDir), { recursive: true });
+  const npmPkg = {
+    name: pkg.name,
+    version: pkg.version,
+    license: pkg.license,
+    type: pkg.type,
+    main: pkg.main,
+    module: pkg.module,
+    types: pkg.types,
+    private: pkg.private,
+    publishConfig: pkg.publishConfig,
+    dependencies: pkg.dependencies,
+  };
+  writeFile(resolve(`${outDir}/package.json`), JSON.stringify(npmPkg, null, 2));
+};
 
 const getPlugins = () => {
   return [
@@ -43,6 +62,9 @@ const getPlugins = () => {
     }),
   ];
 };
+
+await generateIoList();
+await generatePackage();
 
 const esmConfigs = ioList.map(({ input, output }) => {
   return defineConfig({
