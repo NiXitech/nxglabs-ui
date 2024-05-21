@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dts from 'rollup-plugin-dts';
 import terser from '@rollup/plugin-terser';
-import { readdir, access, writeFile } from 'node:fs/promises';
+import { readdir, access, writeFile, copyFile } from 'node:fs/promises';
 import pkg from './package.json' assert { type: 'json' };
 import { existsSync, mkdirSync, statSync } from 'node:fs';
 
@@ -20,7 +20,7 @@ const output = 'index.js';
 const dtsOutput = 'index.d.ts';
 const outDir = 'dist';
 const componentDirPath = 'src/components';
-const ioList: { input: string; output: string; outputDts: string }[] = [];
+const ioList: { input: string; output?: string; outputDts: string }[] = [];
 
 const generateIoList = async () => {
   const componentDir = resolve(componentDirPath);
@@ -55,6 +55,10 @@ const generatePackage = async () => {
   writeFile(resolve(`${outDir}/package.json`), JSON.stringify(npmPkg, null, 2));
 };
 
+const generateIndexFile = async () => {
+  await copyFile(resolve(`${componentDirPath}/${input}`), resolve(`${outDir}/${output}`));
+};
+
 const getPlugins = () => {
   return [
     typescript({
@@ -63,8 +67,9 @@ const getPlugins = () => {
   ];
 };
 
+generatePackage();
+generateIndexFile();
 await generateIoList();
-await generatePackage();
 
 const esmConfigs = ioList.map(({ input, output }) => {
   return defineConfig({
@@ -86,15 +91,20 @@ const esmConfigs = ioList.map(({ input, output }) => {
   });
 });
 
-const dtsConfigs = ioList.map(({ input, outputDts }) => {
-  return defineConfig({
-    input: input,
-    output: {
-      file: outputDts,
-      format: 'esm',
-    },
-    plugins: getPlugins().concat([dts()]),
+const dtsConfigs = ioList
+  .concat({
+    input: resolve(`${componentDirPath}/${input}`),
+    outputDts: resolve(`${outDir}/${dtsOutput}`),
+  })
+  .map(({ input, outputDts }) => {
+    return defineConfig({
+      input: input,
+      output: {
+        file: outputDts,
+        format: 'esm',
+      },
+      plugins: getPlugins().concat([dts()]),
+    });
   });
-});
 
 export default [...esmConfigs, ...dtsConfigs];
