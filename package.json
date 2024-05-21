@@ -15,7 +15,7 @@
     "build": "rollup -c ./rollup.config.ts --configPlugin typescript",
     "pkg:version": "pnpm changeset version",
     "pkg:update": "pnpm changeset",
-    "pkg:publish": "cd dist && pnpm publish --access public",
+    "pkg:publish": "cd dist && pnpm publish --access public --no-git-checks",
     "test": "jest",
     "prepare": "husky"
   },
