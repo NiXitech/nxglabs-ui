@@ -8,7 +8,10 @@
 
 ├── src
 │ ├── components 组件代码
-│ │ ├── index.ts 组件代码通用导出
+│ │ │ ├── button
+│ │ │ │ ├── Button.tsx
+│ │ │ │ └── index.ts 单个组件代码导出，每个组件必须加上
+│ │ ├── index.ts 组件代码通用导出，新增组件必须修改
 │ ├── pages demo 代码
 
 ### 发布
@@ -18,5 +21,5 @@
 pnpm pkg:update
 # 2. 更新 version
 pnpm pkg:version
-# 3. 提交代码触发自动发版
+# 3. 打上 tag 关联 version ，例如 release/v0.0.1 ，提交代码触发自动发版
 ```
